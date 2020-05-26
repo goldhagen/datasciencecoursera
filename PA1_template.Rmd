@@ -1,0 +1,117 @@
+---
+title: "assignment1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+### Read data
+
+Loading
+```{r}
+dat <- read.csv("activity.csv")
+```
+
+and building summary of steps per day
+```{r}
+dd <- dat %>% group_by(date) %>% summarise(ds = sum(steps, na.rm = TRUE))
+```
+
+### Historgram and mean total number of steps
+
+Histogram
+```{r histogram}
+hist(dd$ds, breaks=10, xlab = "steps per day", main="activity")
+```
+and median, mean
+```{r}
+ave <- as.integer(round(mean(dd$ds, na.rm = TRUE), 0))
+med <- median(dd$ds, na.rm = TRUE)
+```
+
+Mean number of daily steps are `r ave`, and median daily steps are `r med`
+
+### Daily activity pattern
+
+5-minute interval, on average across all the days in the dataset, containing the maximum number of steps:
+```{r}
+di <- dat %>% group_by(interval) %>% summarise(ave = mean(steps, na.rm = TRUE))
+ii <- di$interval[which.max(di$ave)]
+sm <- round(max(di$ave),0)
+```
+Interval number `r ii` is the one with the most average steps over all days (`r sm` steps)
+
+Plotting time series of activity
+```{r ts}
+plot(di$interval, di$ave, type="l")
+```
+
+
+### Imputing missing values
+
+Number of missing values:
+```{r}
+vm <- is.na(dat$steps)
+vl <- length(vm)	# number of data records
+vs <- sum(vm)		# number of records with missing steps
+vr <- round(100 * vs / vl, 0) 		# missing values in %
+```
+Out of a total of `r vl` records, `r vs` are missing, so a ratio of `r vr`%
+
+Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. Good, it is late and I am tired. Replacing NA with mean.
+```{r}
+d2 <- dat
+d2$steps[vm] <- round(mean(dat$steps, na.rm = TRUE), 0) 
+```
+
+and building summary of steps per day
+```{r}
+dd <- d2 %>% group_by(date) %>% summarise(ds = sum(steps, na.rm = TRUE))
+```
+
+and histogram
+```{r histogram_imputed}
+hist(dd$ds, breaks=10, xlab = "steps per day", main="activity")
+```
+
+and median, mean
+```{r}
+ave2 <- as.integer(round(mean(dd$ds, na.rm = TRUE), 0))
+med2 <- as.integer(median(dd$ds, na.rm = TRUE))
+
+# percent difference old to new ratio
+1-ave/ave2
+
+# and as a reminder, ratio of missing values
+print(vr/100)
+```
+
+New, after imputation, mean number of daily steps are `r ave2`, and median daily steps are `r med2`.
+
+
+
+### Weekdays and weekends
+
+converting to real dates and generate weekday, weekend factor
+```{r}
+dates <- strptime(d2$date, format="%Y-%m-%d")
+wdays <- weekdays(dates)
+we <- wdays %in% c("Saturday",  "Sunday")
+d2$ww <- factor(we, labels = c("weekday", "weekend"))
+```
+
+5-minute interval, on average across all the days but separating out weekends from weekdays:
+```{r}
+di <- d2 %>% group_by(ww, interval) %>% summarise(ave = mean(steps, na.rm = TRUE))
+```
+
+
+
+and plotting the time series of the activities
+```{r ts2}
+library(lattice)
+xyplot( ave ~ interval  | ww, data = di, type = "l", ylab="average per interval")
+```
